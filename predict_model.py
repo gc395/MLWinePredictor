@@ -1,22 +1,38 @@
 from pyspark.sql import SparkSession
-from pyspark.ml import PipelineModel
+from pyspark.ml.classification import LogisticRegressionModel
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 import sys
+import os
 
-def main(model_path, test_path, output_path):
-    spark = SparkSession.builder.appName("WineQualityPrediction").getOrCreate()
+if len(sys.argv) != 3:
+    print("Usage: python predict_model.py <test_data_path> <model_path>")
+    sys.exit(1)
 
-    # Load model and data
-    model = PipelineModel.load(model_path)
-    test_df = spark.read.csv(test_path, header=True, inferSchema=True)
+test_path = sys.argv[1]
+model_path = sys.argv[2]
 
-    # Predict
-    predictions = model.transform(test_df)
-    predictions.select("prediction").write.csv(output_path, header=True, mode="overwrite")
+if not os.path.exists(test_path) or not os.path.exists(model_path):
+    print("Error: Input file or model path does not exist.")
+    sys.exit(1)
 
-    spark.stop()
+spark = SparkSession.builder.appName("WineQualityPrediction").getOrCreate()
 
-if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: predict_model.py <model_path> <test_path> <output_path>")
-        sys.exit(1)
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+# Load test data locally
+test_df = spark.read.csv(test_path, header=True, inferSchema=True)
+
+# Prepare features
+feature_cols = [col for col in test_df.columns if col != 'quality']
+assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
+test_vec = assembler.transform(test_df).select("features", "quality")
+
+# Load model
+model = LogisticRegressionModel.load(model_path)
+
+# Predict and evaluate
+predictions = model.transform(test_vec)
+evaluator = MulticlassClassificationEvaluator(labelCol="quality", predictionCol="prediction", metricName="f1")
+f1_score = evaluator.evaluate(predictions)
+print(f"Test F1 Score: {f1_score:.4f}")
+
+spark.stop()

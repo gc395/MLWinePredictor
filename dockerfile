@@ -1,15 +1,17 @@
-FROM bitnami/spark:3.3.2
+# Use an official Python base with Spark pre-installed
+FROM bitnami/spark:latest
 
-USER root
-
-# Install Python packages (optional: add more as needed)
-RUN pip install --upgrade pip && \
-    pip install pandas
-
-# Copy app files
-COPY train_model.py /app/train_model.py
-COPY predict_model.py /app/predict_model.py
-
+# Set working directory
 WORKDIR /app
 
-ENTRYPOINT ["spark-submit"]
+# Copy Python scripts
+COPY train_model.py predict_model.py ./
+
+# Copy training and validation datasets into the container
+COPY TrainingDataset.csv ValidationDataset.csv ./
+
+# Set environment variable to suppress Spark's interactive shell prompt
+ENV PYSPARK_PYTHON=python3
+
+# Default command (can be overridden)
+CMD ["spark-submit", "train_model.py", "TrainingDataset.csv", "ValidationDataset.csv"]

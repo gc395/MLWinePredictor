@@ -1,41 +1,45 @@
 from pyspark.sql import SparkSession
 from pyspark.ml.classification import LogisticRegression
-from pyspark.ml.feature import VectorAssembler, StringIndexer
+from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
-from pyspark.ml import Pipeline
 import sys
+import os
 
-def main(train_path, val_path, model_output_path):
-    spark = SparkSession.builder.appName("WineQualityTraining").getOrCreate()
+if len(sys.argv) != 3:
+    print("Usage: python train_model.py <training_data_path> <validation_data_path>")
+    sys.exit(1)
 
-    # Load datasets
-    train_df = spark.read.csv(train_path, header=True, inferSchema=True)
-    val_df = spark.read.csv(val_path, header=True, inferSchema=True)
+training_path = sys.argv[1]
+validation_path = sys.argv[2]
 
-    # Preprocessing
-    features = [col for col in train_df.columns if col != "quality"]
-    assembler = VectorAssembler(inputCols=features, outputCol="features")
-    label_indexer = StringIndexer(inputCol="quality", outputCol="label")
+if not os.path.exists(training_path) or not os.path.exists(validation_path):
+    print("Error: One or both input files do not exist.")
+    sys.exit(1)
 
-    # Model
-    lr = LogisticRegression(maxIter=50, regParam=0.3, elasticNetParam=0.8)
+spark = SparkSession.builder.appName("WineQualityTraining").getOrCreate()
 
-    pipeline = Pipeline(stages=[assembler, label_indexer, lr])
-    model = pipeline.fit(train_df)
+# Load local CSVs
+train_df = spark.read.csv(training_path, header=True, inferSchema=True)
+val_df = spark.read.csv(validation_path, header=True, inferSchema=True)
 
-    # Validation
-    predictions = model.transform(val_df)
-    evaluator = MulticlassClassificationEvaluator(metricName="f1")
-    f1_score = evaluator.evaluate(predictions)
+# Features & label
+feature_cols = [col for col in train_df.columns if col != 'quality']
+assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
 
-    print(f"Validation F1 Score: {f1_score:.4f}")
+train_vec = assembler.transform(train_df).select("features", "quality")
+val_vec = assembler.transform(val_df).select("features", "quality")
 
-    # Save model
-    model.write().overwrite().save(model_output_path)
-    spark.stop()
+# Train model
+lr = LogisticRegression(labelCol="quality", featuresCol="features", maxIter=10)
+model = lr.fit(train_vec)
 
-if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: train_model.py <train_path> <val_path> <model_output_path>")
-        sys.exit(1)
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+# Save model locally
+model.write().overwrite().save("trained_model")
+
+# Evaluate
+predictions = model.transform(val_vec)
+evaluator = MulticlassClassificationEvaluator(labelCol="quality", predictionCol="prediction", metricName="f1")
+f1_score = evaluator.evaluate(predictions)
+print(f"Validation F1 Score: {f1_score:.4f}")
+
+spark.stop()
