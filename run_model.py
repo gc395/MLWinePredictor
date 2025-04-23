@@ -1,35 +1,34 @@
 import sys
+import subprocess
 import os
-from pyspark.sql import SparkSession
-from train_model import train_model
-from predict_model import predict_and_evaluate
 
-def main():
-    if len(sys.argv) != 4:
-        print("Usage: run_model.py <train_dataset.csv> <validation_dataset.csv> <test_dataset.csv>")
+def validate_args(args):
+    if len(args) != 3:
+        print("Usage: spark-submit run_model.py <training_data.csv> <validation_data.csv>")
         sys.exit(1)
 
-    train_path = sys.argv[1]
-    validation_path = sys.argv[2]
-    test_path = sys.argv[3]
+def main():
+    validate_args(sys.argv)
 
-    # Check if files exist
-    for path in [train_path, validation_path, test_path]:
-        if not os.path.isfile(path):
-            print(f"Error: File not found - {path}")
-            sys.exit(1)
+    training_file = sys.argv[1]
+    validation_file = sys.argv[2]
 
-    spark = SparkSession.builder.appName("WineQualityPredictor").getOrCreate()
+    # Check if the files actually exist in the container
+    if not os.path.isfile(training_file):
+        print(f"Error: Training file '{training_file}' not found.")
+        sys.exit(1)
+    if not os.path.isfile(validation_file):
+        print(f"Error: Validation file '{validation_file}' not found.")
+        sys.exit(1)
 
-    print("Training model...")
-    model = train_model(spark, train_path, validation_path)
+    # Call train_model.py with the arguments
+    result = subprocess.run([
+        "spark-submit", "train_model.py", training_file, validation_file
+    ])
 
-    print("Evaluating model...")
-    f1_score = predict_and_evaluate(spark, model, test_path)
-
-    print(f"F1 Score on Test Dataset: {f1_score:.4f}")
-
-    spark.stop()
+    if result.returncode != 0:
+        print("Training failed.")
+        sys.exit(result.returncode)
 
 if __name__ == "__main__":
     main()
