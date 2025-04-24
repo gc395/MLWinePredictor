@@ -12,31 +12,26 @@ if len(sys.argv) != 3:
 training_path = sys.argv[1]
 validation_path = sys.argv[2]
 
-if not os.path.isdir(training_path) or not os.path.isdir(validation_path):
-    print("Error: One or both input directories do not exist.")
+if not os.path.exists(training_path) or not os.path.exists(validation_path):
+    print("Error: One or both input paths do not exist.")
     sys.exit(1)
 
 spark = SparkSession.builder.appName("WineQualityTraining").getOrCreate()
 
-# Load local CSVs
 train_df = spark.read.csv(training_path, header=True, inferSchema=True)
 val_df = spark.read.csv(validation_path, header=True, inferSchema=True)
 
-# Features & label
 feature_cols = [col for col in train_df.columns if col != 'quality']
 assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
 
 train_vec = assembler.transform(train_df).select("features", "quality")
 val_vec = assembler.transform(val_df).select("features", "quality")
 
-# Train model
 lr = LogisticRegression(labelCol="quality", featuresCol="features", maxIter=10)
 model = lr.fit(train_vec)
 
-# Save model locally
 model.write().overwrite().save("trained_model")
 
-# Evaluate
 predictions = model.transform(val_vec)
 evaluator = MulticlassClassificationEvaluator(labelCol="quality", predictionCol="prediction", metricName="f1")
 f1_score = evaluator.evaluate(predictions)
