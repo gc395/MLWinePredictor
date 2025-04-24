@@ -12,8 +12,8 @@ if len(sys.argv) != 3:
 test_path = sys.argv[1]
 model_path = sys.argv[2]
 
-if not os.path.exists(test_path) or not os.path.exists(model_path):
-    print("Error: Input file or model path does not exist.")
+if not os.path.isdir(test_path) or not os.path.isdir(model_path):
+    print("Error: One or both input directories do not exist.")
     sys.exit(1)
 
 spark = SparkSession.builder.appName("WineQualityPrediction").getOrCreate()

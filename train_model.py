@@ -12,8 +12,8 @@ if len(sys.argv) != 3:
 training_path = sys.argv[1]
 validation_path = sys.argv[2]
 
-if not os.path.exists(training_path) or not os.path.exists(validation_path):
-    print("Error: One or both input files do not exist.")
+if not os.path.isdir(training_path) or not os.path.isdir(validation_path):
+    print("Error: One or both input directories do not exist.")
     sys.exit(1)
 
 spark = SparkSession.builder.appName("WineQualityTraining").getOrCreate()
