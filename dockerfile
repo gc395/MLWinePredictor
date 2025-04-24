@@ -10,9 +10,6 @@ COPY train_model.py predict_model.py run_model.py ./
 # Copy datasets
 COPY TrainingDataset.csv ValidationDataset.csv ./
 
-# Install Python 3 and pip (if not already available)
-RUN install_packages python3 python3-pip
-
 # Optional: install common Python libraries (Spark handles most things, but in case you need anything extra)
 RUN pip3 install pandas numpy
 
