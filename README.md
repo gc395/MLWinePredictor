@@ -108,7 +108,7 @@ Validation F1 Score: 0.5610
 
 ---
 
-## 🔁 Swapping the Model (Optional)
+## Swapping the Model (Optional)
 
 To try **Random Forest** or other classifiers, simply edit `train_model.py`:
 
