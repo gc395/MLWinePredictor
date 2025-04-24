@@ -16,9 +16,4 @@ RUN pip3 install pandas numpy
 ENV PYSPARK_PYTHON=python3
 
 # Run cleanup + training at container startup
-CMD ["sh", "-c", "\
-    spark-submit debug_columns.py TrainingDataset.csv cleaned_train.csv && \
-    spark-submit debug_columns.py ValidationDataset.csv cleaned_validation.csv && \
-    spark-submit train_model.py cleaned_train.csv cleaned_validation.csv && \
-    spark-submit run_model.py cleaned_train.csv cleaned_validation.csv | tee /app/output.txt"]
-
+CMD ["spark-submit", "run_model.py", "cleaned_train.csv", "cleaned_validation.csv"]

@@ -7,13 +7,16 @@ def validate_args(args):
         print("Usage: spark-submit run_model.py <training_data.csv> <validation_data.csv>")
         sys.exit(1)
 
+def run_and_capture(command):
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    return result.stdout, result.returncode
+
 def main():
     validate_args(sys.argv)
 
     training_file = sys.argv[1]
     validation_file = sys.argv[2]
 
-    # Check if the files actually exist in the container
     if not os.path.isfile(training_file):
         print(f"Error: Training file '{training_file}' not found.")
         sys.exit(1)
@@ -21,14 +24,22 @@ def main():
         print(f"Error: Validation file '{validation_file}' not found.")
         sys.exit(1)
 
-    # Call train_model.py with the arguments
-    result = subprocess.run([
-        "spark-submit", "train_model.py", training_file, validation_file
-    ])
+    logs = ""
 
-    if result.returncode != 0:
-        print("Training failed.")
-        sys.exit(result.returncode)
+    out, code = run_and_capture(["spark-submit", "train_model.py", training_file, validation_file])
+    logs += "=== Training Output ===\n" + out + "\n"
+    if code != 0:
+        logs += "[Error] Training failed.\n"
+
+    out, code = run_and_capture(["spark-submit", "predict_model.py", validation_file, "trained_model"])
+    logs += "=== Prediction Output ===\n" + out + "\n"
+    if code != 0:
+        logs += "[Error] Prediction failed.\n"
+
+    with open("output.txt", "w") as f:
+        f.write(logs)
+
+    print("Run completed. Output saved to output.txt")
 
 if __name__ == "__main__":
     main()
