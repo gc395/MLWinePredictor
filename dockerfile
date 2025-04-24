@@ -10,16 +10,15 @@ COPY train_model.py predict_model.py run_model.py ./
 # Copy datasets
 COPY TrainingDataset.csv ValidationDataset.csv ./
 
-# Set environment variable so Spark uses Python 3
+# Install Python 3 and pip (if not already available)
+RUN install_packages python3 python3-pip
+
+# Optional: install common Python libraries (Spark handles most things, but in case you need anything extra)
+RUN pip3 install pandas numpy
+
+# Set environment variables for Spark to use Python 3
 ENV PYSPARK_PYTHON=python3
-
-# Optionally install extra Python packages (if needed)
-# USER root
-# RUN apt-get update && apt-get install -y python3-pip && \
-#     pip3 install pandas scikit-learn
-
-# Switch back if you elevated privileges
-# USER 1001
+ENV PYSPARK_DRIVER_PYTHON=python3
 
 # Default command (can be overridden at runtime)
 CMD ["spark-submit", "run_model.py", "TrainingDataset.csv", "ValidationDataset.csv"]
