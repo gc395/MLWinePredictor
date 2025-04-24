@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.ml.classification import RandomForestClassifier
+from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 import sys
@@ -27,8 +27,8 @@ assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
 train_vec = assembler.transform(train_df).select("features", "quality")
 val_vec = assembler.transform(val_df).select("features", "quality")
 
-rf = RandomForestClassifier(labelCol="quality", featuresCol="features", numTrees=100)
-model = rf.fit(train_vec)
+lr = LogisticRegression(labelCol="quality", featuresCol="features", maxIter=10)
+model = lr.fit(train_vec)
 
 model.write().overwrite().save("trained_model")
 
