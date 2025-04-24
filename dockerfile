@@ -1,26 +1,22 @@
-# Use Bitnami's Spark base image (with Hadoop)
+# Use Spark-enabled Python image
 FROM bitnami/spark:latest
 
-# Set working directory
 WORKDIR /app
 
-# Copy Python scripts
-COPY train_model.py predict_model.py run_model.py ./
+# Copy scripts
+COPY train_model.py predict_model.py debug_columns.py run_model.py ./
 
-# Copy datasets
+# Copy raw datasets
 COPY TrainingDataset.csv ValidationDataset.csv ./
 
 # Optional: install common Python libraries (Spark handles most things, but in case you need anything extra)
 RUN pip3 install pandas numpy
 
-
-# Set environment variables for Spark to use Python 3
+# Set Python version for Spark
 ENV PYSPARK_PYTHON=python3
-ENV PYSPARK_DRIVER_PYTHON=python3
 
-# Clean datasets before training
-RUN spark-submit debug_columns.py TrainingDataset.csv cleaned_train.csv && \
-    spark-submit debug_columns.py ValidationDataset.csv cleaned_validation.csv
-
-# Default command (can be overridden at runtime)
-CMD ["spark-submit", "run_model.py", "TrainingDataset.csv", "ValidationDataset.csv"]
+# Run cleanup + training at container startup
+CMD bash -c "\
+    spark-submit debug_columns.py TrainingDataset.csv cleaned_train.csv && \
+    spark-submit debug_columns.py ValidationDataset.csv cleaned_validation.csv && \
+    spark-submit train_model.py cleaned_train.csv cleaned_validation.csv"
