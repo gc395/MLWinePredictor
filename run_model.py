@@ -14,32 +14,49 @@ def run_and_capture(command):
 def main():
     validate_args(sys.argv)
 
-    training_file = sys.argv[1]
-    validation_file = sys.argv[2]
+    raw_train = sys.argv[1]
+    raw_val = sys.argv[2]
 
-    if not os.path.isfile(training_file):
-        print(f"Error: Training file '{training_file}' not found.")
+    cleaned_train = "cleaned_train.csv"
+    cleaned_val = "cleaned_validation.csv"
+
+    if not os.path.isfile(raw_train):
+        print(f"Error: Training file '{raw_train}' not found.")
         sys.exit(1)
-    if not os.path.isfile(validation_file):
-        print(f"Error: Validation file '{validation_file}' not found.")
+    if not os.path.isfile(raw_val):
+        print(f"Error: Validation file '{raw_val}' not found.")
         sys.exit(1)
 
     logs = ""
 
-    out, code = run_and_capture(["spark-submit", "train_model.py", training_file, validation_file])
+    # Clean datasets
+    out, code = run_and_capture(["spark-submit", "debug_columns.py", raw_train, cleaned_train])
+    logs += "=== Cleaning Training Dataset ===\n" + out + "\n"
+    if code != 0:
+        logs += "[Error] Failed to clean training dataset.\n"
+
+    out, code = run_and_capture(["spark-submit", "debug_columns.py", raw_val, cleaned_val])
+    logs += "=== Cleaning Validation Dataset ===\n" + out + "\n"
+    if code != 0:
+        logs += "[Error] Failed to clean validation dataset.\n"
+
+    # Train
+    out, code = run_and_capture(["spark-submit", "train_model.py", cleaned_train, cleaned_val])
     logs += "=== Training Output ===\n" + out + "\n"
     if code != 0:
         logs += "[Error] Training failed.\n"
 
-    out, code = run_and_capture(["spark-submit", "predict_model.py", validation_file, "trained_model"])
+    # Predict
+    out, code = run_and_capture(["spark-submit", "predict_model.py", cleaned_val, "trained_model"])
     logs += "=== Prediction Output ===\n" + out + "\n"
     if code != 0:
         logs += "[Error] Prediction failed.\n"
 
+    # Save logs
     with open("output.txt", "w") as f:
         f.write(logs)
 
-    print("Run completed. Output saved to output.txt")
+    print("✔️ Run complete. See output.txt for full logs.")
 
 if __name__ == "__main__":
     main()
