@@ -1,5 +1,5 @@
 # Use Spark-enabled Python image
-FROM bitnami/spark:latest
+FROM bitnami/pyspark:latest
 
 WORKDIR /app
 
