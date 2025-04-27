@@ -17,3 +17,4 @@ ENV PYSPARK_PYTHON=python3
 
 # Run cleanup + training at container startup
 CMD ["spark-submit", "run_model.py", "cleaned_train.csv", "cleaned_validation.csv"]
+
